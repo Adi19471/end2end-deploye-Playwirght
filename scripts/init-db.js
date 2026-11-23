@@ -19,7 +19,7 @@ async function setupDatabase() {
 
   await connection.execute(
     `INSERT INTO users (id, name, email)
-     VALUES (1, 'Adi', 'adi@gmail.com')
+     VALUES (1, 'Adi', 'adi2@gmail.com')
      ON DUPLICATE KEY UPDATE name = VALUES(name),
      email = VALUES(email)`
   );
