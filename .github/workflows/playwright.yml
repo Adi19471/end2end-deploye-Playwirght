@@ -1,27 +1,60 @@
-name: Playwright Tests
+
+name: Playwright API and MySQL Tests
+
 on:
   push:
-    branches: [ main, master ]
+    branches: [main]
   pull_request:
-    branches: [ main, master ]
+    branches: [main]
+  workflow_dispatch:
+
 jobs:
-  test:
-    timeout-minutes: 60
+  automation:
     runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          MYSQL_DATABASE: playwright_db
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -p$MYSQL_ROOT_PASSWORD"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DB_HOST: 127.0.0.1
+      DB_USER: root
+      DB_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+      DB_NAME: playwright_db
+
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version: lts/*
-    - name: Install dependencies
-      run: npm ci
-    - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
-    - name: Run Playwright tests
-      run: npx playwright test
-    - uses: actions/upload-artifact@v4
-      if: ${{ !cancelled() }}
-      with:
-        name: playwright-report
-        path: playwright-report/
-        retention-days: 30
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Initialize MySQL Database
+        run: node scripts/init-db.js
+
+      - name: Run Playwright API Tests
+        run: npx playwright test tests/api/ --reporter=html
+
+      - name: Upload Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-html-report
+          path: playwright-report/
+          if-no-files-found: ignore
